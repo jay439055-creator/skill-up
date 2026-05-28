@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UX/UI Designer — 2026 Portfolio</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: auto; }
+body {
+  background: #b2b0ab;
+  height: 400vh; /* scrollable page */
+}
+#canvas-wrap {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+canvas { display: block; }
+#scroll-hint {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: #888;
+  animation: bob 2s ease-in-out infinite;
+}
+@keyframes bob {
+  0%,100% { opacity:.4; transform:translateX(-50%) translateY(0); }
+  50%      { opacity:.8; transform:translateX(-50%) translateY(-5px); }
+}
+</style>
+</head>
+<body>
+<div id="canvas-wrap"><canvas id="c"></canvas></div>
+<div id="scroll-hint">SCROLL DOWN</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+setTimeout(build, 150);
+
+function build() {
+
+/* ── Renderer ─────────────────────────────────────────────── */
+const canvas = document.getElementById('c');
+const SZ = Math.min(window.innerWidth, window.innerHeight * 0.96);
+const W = SZ, H = SZ * 1.08;
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(W, H);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+/* ── Scene ────────────────────────────────────────────────── */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xb2b0ab);
+
+/* ── Orthographic Camera ──────────────────────────────────── */
+const FRUSTUM = 5.6;
+const aspect  = W / H;
+const camera  = new THREE.OrthographicCamera(
+  -FRUSTUM * aspect / 2,  FRUSTUM * aspect / 2,
+   FRUSTUM / 2,          -FRUSTUM / 2,
+  0.1, 100
+);
+camera.position.set(0, 0.4, 14);
+camera.lookAt(0, 0, 0);
+
+/* ── Lights ───────────────────────────────────────────────── */
+scene.add(new THREE.AmbientLight(0xffffff, 0.82));
+
+const key = new THREE.DirectionalLight(0xfff9f4, 0.70);
+key.position.set(3, 6, 10);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = -7; key.shadow.camera.right  = 7;
+key.shadow.camera.top  =  8; key.shadow.camera.bottom = -8;
+key.shadow.bias = -0.001;
+scene.add(key);
+
+const fill = new THREE.DirectionalLight(0xeef4ff, 0.18);
+fill.position.set(-6, 2, 8);
+scene.add(fill);
+
+/* ── Scene group (rotates on scroll) ─────────────────────── */
+const group = new THREE.Group();
+scene.add(group);
+
+/* ── Texture helper ───────────────────────────────────────── */
+const DPR = Math.min(window.devicePixelRatio, 2);
+
+function mkTex(pw, ph, fn) {
+  const cv = document.createElement('canvas');
+  cv.width = pw * DPR; cv.height = ph * DPR;
+  const ctx = cv.getContext('2d');
+  ctx.scale(DPR, DPR);
+  fn(ctx, pw, ph);
+  const t = new THREE.CanvasTexture(cv);
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  t.minFilter  = THREE.LinearFilter;
+  t.magFilter  = THREE.LinearFilter;
+  return t;
+}
+function pMat(tex, r=0.90) {
+  return new THREE.MeshStandardMaterial({ map:tex, roughness:r, metalness:0 });
+}
+function cMat(hex, r=0.90) {
+  return new THREE.MeshStandardMaterial({ color:hex, roughness:r, metalness:0 });
+}
+function ao(ctx, w, h, s=0.12) {
+  const g = ctx.createRadialGradient(w/2,h/2,h*0.05, w/2,h/2,Math.max(w,h)*0.78);
+  g.addColorStop(0,'rgba(0,0,0,0)');
+  g.addColorStop(1,`rgba(0,0,0,${s})`);
+  ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+}
+
+/* ── Room dims ────────────────────────────────────────────── */
+const RW=3.8, RH=4.2, RD=2.6;
+const FT=0.46, EPS=0.006;
+
+/* ════════════ WALL TEXTURES ════════════ */
+
+const tBack = mkTex(2048, 2340, (ctx, w, h) => {
+  const g=ctx.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,'#d9d6d1'); g.addColorStop(1,'#c9c6c1');
+  ctx.fillStyle=g; ctx.fillRect(0,0,w,h); ao(ctx,w,h,0.11);
+
+  ctx.fillStyle='#101010';
+  ctx.font='900 160px Arial Black,Arial';
+  ctx.fillText('UX/UI',    88, 320);
+  ctx.fillText('DESIGNER', 88, 490);
+
+  ctx.font='400 50px Arial'; ctx.fillStyle='#282828';
+  ctx.fillText('USER EXPERIENCE',    94, 575);
+  ctx.fillText('USER INTERFACE',     94, 636);
+  ctx.fillText('INTERACTION DESIGN', 94, 697);
+
+  ctx.strokeStyle='#999'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(1310,1000); ctx.lineTo(1310,1500); ctx.stroke();
+  ctx.save();
+  ctx.translate(1354,1485); ctx.rotate(-Math.PI/2);
+  ctx.font='400 33px Arial'; ctx.fillStyle='#888';
+  ctx.fillText('2026 PORTFOLIO',0,0);
+  ctx.restore();
+
+  ctx.font='700 44px Arial'; ctx.fillStyle='#101010';
+  ['WEB','APP','BRANDING','INTERACTION','EXPERIMENTS']
+    .forEach((t,i)=>ctx.fillText(t,1490,1460+i*80));
+
+  ctx.save();
+  ctx.translate(94,h-52); ctx.rotate(-0.20);
+  ctx.font='italic 400 29px Arial'; ctx.fillStyle='#888';
+  ['DESIGN','THINKING','PROBLEM SOLVING','USER CENTERED']
+    .forEach((t,i)=>ctx.fillText(t,i*292,0));
+  ctx.restore();
+});
+
+const tCeil = mkTex(2048,1400,(ctx,w,h)=>{
+  const g=ctx.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,'#d6d3ce'); g.addColorStop(1,'#cbc8c3');
+  ctx.fillStyle=g; ctx.fillRect(0,0,w,h); ao(ctx,w,h,0.14);
+  ctx.fillStyle='#101010';
+  ctx.font='900 360px Arial Black,Arial'; ctx.fillText('AI',72,420);
+  ctx.font='700 58px Arial'; ctx.fillStyle='#1a1a1a';
+  ctx.fillText('ARTIFICIAL INTELLIGENCE',840,192);
+  ctx.fillText('MEETS',840,263);
+  ctx.fillText('HUMAN CREATIVITY',840,334);
+});
+
+const tLeft = mkTex(1400,2340,(ctx,w,h)=>{
+  const g=ctx.createLinearGradient(0,0,w,0);
+  g.addColorStop(0,'#bfbcb7'); g.addColorStop(1,'#d0cdc8');
+  ctx.fillStyle=g; ctx.fillRect(0,0,w,h); ao(ctx,w,h,0.20);
+  ctx.save();
+  ctx.translate(w*0.54,h*0.60); ctx.rotate(-Math.PI/2);
+  ctx.font='900 175px Arial Black,Arial';
+  ctx.fillStyle='#101010'; ctx.textAlign='center';
+  ctx.fillText('UX/UI DESIGNER',0,0);
+  ctx.restore();
+});
+
+const tRight = mkTex(1400,2340,(ctx,w,h)=>{
+  const g=ctx.createLinearGradient(w,0,0,0);
+  g.addColorStop(0,'#bfbcb7'); g.addColorStop(1,'#d0cdc8');
+  ctx.fillStyle=g; ctx.fillRect(0,0,w,h); ao(ctx,w,h,0.20);
+  ctx.save();
+  ctx.translate(w*0.46,h*0.40); ctx.rotate(Math.PI/2);
+  ctx.font='900 192px Arial Black,Arial';
+  ctx.fillStyle='#101010'; ctx.textAlign='center';
+  ctx.fillText('PROJECTS',0,0);
+  ctx.restore();
+});
+
+const tFloor = mkTex(512,512,(ctx,w,h)=>{
+  ctx.fillStyle='#bfbcb7'; ctx.fillRect(0,0,w,h); ao(ctx,w,h,0.10);
+});
+
+/* ════════════ WALLS ════════════ */
+function addWall(geo, mat, rx, ry, x, y, z) {
+  const m=new THREE.Mesh(geo,mat);
+  m.rotation.set(rx,ry,0); m.position.set(x,y,z);
+  m.receiveShadow=true; group.add(m);
+}
+addWall(new THREE.PlaneGeometry(RW,RH), pMat(tBack),    0,0,           0,0,-(RD/2-EPS));
+addWall(new THREE.PlaneGeometry(RD,RH), pMat(tLeft),    0,Math.PI/2,  -(RW/2-EPS),0,0);
+addWall(new THREE.PlaneGeometry(RD,RH), pMat(tRight),   0,-Math.PI/2,  (RW/2-EPS),0,0);
+addWall(new THREE.PlaneGeometry(RW,RD), pMat(tCeil), -Math.PI/2,0,    0,RH/2-EPS,0);
+addWall(new THREE.PlaneGeometry(RW,RD), pMat(tFloor),-Math.PI/2,0,    0,-(RH/2-EPS),0);
+
+/* ════════════ STAIRS ════════════
+   Left=tallest/back, Right=shortest/front-right
+   Stairs don't have text — text is on separate box
+════════════ */
+const FLOOR_Y = -RH/2;
+const STEP_D  = RD - 0.08;
+
+const stepDefs = [
+  { w:0.72, h:2.10 },
+  { w:0.65, h:1.55 },
+  { w:0.60, h:1.05 },
+  { w:0.55, h:0.65 },
+  { w:0.50, h:0.32 },
+];
+
+function sMats() {
+  return [
+    cMat(0xb0ada8),  // +x
+    cMat(0xb8b5b0),  // -x
+    cMat(0xd8d5d0),  // +y top (lightest)
+    cMat(0xa8a5a0),  // -y
+    cMat(0xc8c5c0),  // +z front
+    cMat(0xb0ada8),  // -z back
+  ];
+}
+
+// Stairs start from center-left and go right
+let curX = -0.60;
+stepDefs.forEach(s => {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(s.w, s.h, STEP_D), sMats());
+  mesh.position.set(curX + s.w/2, FLOOR_Y + s.h/2, 0);
+  mesh.castShadow = mesh.receiveShadow = true;
+  group.add(mesh);
+  curX += s.w;
+});
+
+/* ════════════ SEPARATE "2026" BOX ════════════
+   Sits on floor, bottom-left, in FRONT of stairs
+════════════ */
+const BOX_W=1.15, BOX_H=1.05, BOX_D=0.90;
+
+const t2026 = mkTex(1150, 1050, (ctx, w, h) => {
+  const g=ctx.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,'#d6d3ce'); g.addColorStop(1,'#cacac5');
+  ctx.fillStyle=g; ctx.fillRect(0,0,w,h); ao(ctx,w,h,0.07);
+
+  const p=80;
+  ctx.fillStyle='#101010';
+  ctx.font=`900 ${Math.round(w*0.40)}px Arial Black,Arial`;
+  ctx.fillText('2026', p, h*0.42);
+
+  ctx.font=`700 ${Math.round(w*0.185)}px Arial Black,Arial`;
+  ctx.fillStyle='#1e1e1e';
+  ctx.fillText('Portfolio', p, h*0.62);
+
+  ctx.font=`400 ${Math.round(w*0.082)}px Arial`;
+  ctx.fillStyle='#555';
+  ctx.fillText('WORK',     p, h*0.745);
+  ctx.fillText('PROCESS',  p, h*0.835);
+  ctx.fillText('THOUGHTS', p, h*0.925);
+});
+
+const boxMats = [
+  cMat(0xb2afa9),   // +x right
+  cMat(0xbcb9b4),   // -x left
+  cMat(0xd8d5d0),   // +y top
+  cMat(0xa8a5a0),   // -y bottom
+  pMat(t2026),      // +z front — "2026 Portfolio"
+  cMat(0xb4b1ab),   // -z back
+];
+
+const box2026 = new THREE.Mesh(new THREE.BoxGeometry(BOX_W, BOX_H, BOX_D), boxMats);
+// Position: bottom-left, in front of stairs (positive Z = toward camera)
+box2026.position.set(-1.55, FLOOR_Y + BOX_H/2, RD/2 - BOX_D/2 - 0.04);
+box2026.castShadow = box2026.receiveShadow = true;
+group.add(box2026);
+
+/* ════════════ OUTER FRAME ════════════ */
+const OW=RW+FT*2, OH=RH+FT*2, fd=RD+FT*1.5;
+const fMat=cMat(0xdedad5,0.78);
+
+[[OW,FT,fd, 0, RH/2+FT/2, 0],
+ [OW,FT,fd, 0,-RH/2-FT/2, 0],
+ [FT,RH,fd,-RW/2-FT/2,0,  0],
+ [FT,RH,fd, RW/2+FT/2,0,  0]
+].forEach(([sx,sy,sz,x,y,z])=>{
+  const m=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),fMat);
+  m.position.set(x,y,z); m.castShadow=true; group.add(m);
+});
+const cap=new THREE.Mesh(new THREE.PlaneGeometry(OW,OH),fMat);
+cap.rotation.y=Math.PI; cap.position.set(0,0,-(RD/2+FT));
+group.add(cap);
+
+/* ════════════ SCROLL ANIMATION ════════════
+   Scroll 0%  → group.rotation.y = 0     (정면)
+   Scroll 100% → group.rotation.y = -0.55 (측면 노출)
+   Camera Y also rises slightly
+════════════ */
+let scrollT = 0, curRotY = 0, curCamY = 0.4;
+const scrollHint = document.getElementById('scroll-hint');
+
+function lerp(a,b,t){ return a+(b-a)*t; }
+function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
+function ease(t){ return t<0.5 ? 2*t*t : -1+(4-2*t)*t; }
+
+window.addEventListener('scroll', ()=>{
+  const maxS = document.body.scrollHeight - window.innerHeight;
+  scrollT = clamp(window.scrollY / maxS, 0, 1);
+  scrollHint.style.opacity = scrollT > 0.05 ? '0' : '1';
+});
+
+/* ── Render loop ──────────────────────────────────────────── */
+(function loop(){
+  requestAnimationFrame(loop);
+
+  const t = ease(scrollT);
+
+  // Rotate the whole scene group
+  curRotY += (-t * 0.58 - curRotY) * 0.06;
+  group.rotation.y = curRotY;
+
+  // Camera drifts slightly upward to reveal more of top on rotation
+  curCamY += (0.4 + t * 0.45 - curCamY) * 0.06;
+  camera.position.y = curCamY;
+  camera.lookAt(0, 0, 0);
+
+  renderer.render(scene, camera);
+})();
+
+/* ── Resize ───────────────────────────────────────────────── */
+window.addEventListener('resize', ()=>{
+  const S=Math.min(window.innerWidth,window.innerHeight*0.96);
+  const a=S/(S*1.08);
+  renderer.setSize(S,S*1.08);
+  camera.left=-FRUSTUM*a/2; camera.right=FRUSTUM*a/2;
+  camera.top=FRUSTUM/2; camera.bottom=-FRUSTUM/2;
+  camera.updateProjectionMatrix();
+});
+
+} // end build
+</script>
+</body>
+</html>
